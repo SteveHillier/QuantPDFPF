@@ -1,0 +1,319 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+# PDFPF practical starts here:
+
+### load the powdR package (it is already installed i.e avialable to load)
+
+```{r}
+
+library(powdR)
+
+```
+
+### where to find some help on functions in the package etc
+
+```{r}
+
+help(package="powdR")
+
+```
+
+# Ok lets try some prior determined full pattern fitting
+
+### first load the RockJock full pattern library which is included in the powdR package
+
+```{r}
+data(rockjock)
+```
+
+### check the RStudio Environment TAB to locate the rockjock library object
+### take a closer look at it if you want
+
+
+### powdR also comes with 8 diffraction patterns of RockJock mixtures, synthetic mineral mixtures made by Denni Eberl to test his RockJock spreadsheet program, [accessed via data(rockjock_mixtures)], and the known compositions of these mixtures provided in the rockjock_weights data [accessed via data(rockjock_weights)].
+
+
+
+```{r}
+
+data("rockjock_mixtures")
+data("rockjock_weights")
+
+```
+
+### click on them in the Environment TAB for them to load fully
+
+### Once you have a powdRlib reference library and diffractogram(s) loaded into R, you have everything needed for quantitative analysis via full pattern summation. Full pattern summation in powdR is provided via the fps() function, whilst an automated version is provided in afps(). Details of the equations and routines implemented in fps() and afps() are provided in Butler and Hillier (2021a) and Butler and Hillier (2021b).
+
+
+### Here we will used the RockJock full pattern library and the measured diffraction patterns of the RockJock mixtures to test out some quantitaive phases analysis by prior determined full pattern fitting  
+
+### for the first example we will fit Mixture 1 'Mix1'using the fps (full pattern summation) powdR function
+
+### fps accepts a wide range of arguments that are detailed in the package documentation (see ?fps.powdRlib)
+
+### the example below passes the following seven arguments to fps():
+
+    1. lib is used to define the powdRlib object containing the reference patterns and their RIRs.
+    2. smpl is used to defined the data frame or XY object containing the sample diffractogram.
+    3. refs is used to define a string of phase IDs (lib$phases$phase_id) and/or phase names (lib$phases$phase_names) of the reference patterns to be used in the fitting process.
+    4. std is used to define the phase ID of the reference pattern to be used as the internal standard.
+    5. std_conc is used to define the concentration of the internal standard in weight %.
+    6. omit_std is used to define whether the internal standard is omitted from the output and phase concentrations recomputed accordingly.
+    7. align is used to define the maximum positive or negative shift in 2θ that is permitted during alignment of the sample to the reference pattern that is specified in the std argument.
+    
+    
+```{r}
+data(rockjock_mixtures)
+
+fit1 <- fps(lib = rockjock,
+            smpl = rockjock_mixtures$Mix1,    #Mix1 in the rockjock_mixtures 
+            refs = c("ORDERED_MICROCLINE",
+                     "Plagioclase",
+                     "KAOLINITE_DRY_BRANCH",
+                     "MONTMORILLONITE_WYO",
+                     "ILLITE_1M_RM30",
+                     "CORUNDUM"),
+            std = "CORUNDUM",
+            std_conc = 20,
+            omit_std = TRUE,
+            align = 0.3)
+```
+
+
+### Once computed, the fps() function produces a powdRfps object, which is a bundle of data in list format that contains the outputs (see ?fps.powdRlib).
+
+### Output was assigned above to the object 'fit1'
+
+```{r}
+summary(fit1)
+```
+
+
+### The phase concentrations can be accessed in the phases data frame of the powdRfps object:
+
+
+```{r}
+fit1$phases
+```
+
+### notice that if the concentration of the internal standard is specified then the phase concentrations do not necessarily sum to 100 %:
+
+```{r}
+sum(fit1$phases$phase_percent, na.rm = TRUE)
+```
+
+
+### Unlike other software where only certain phases can be used as an internal standard, any phase can be defined in powdR. For example, the rockjock_mixtures$Mix5 sample contains 20 % quartz (see data(rockjock_weights)), thus adding "QUARTZ" as the std argument results in this reference pattern becoming the internal standard instead.
+
+
+
+```{r}
+fit2 <- fps(lib = rockjock,
+            smpl = rockjock_mixtures$Mix5,
+            refs = c("ORDERED_MICROCLINE",
+                     "Plagioclase",
+                     "KAOLINITE_DRY_BRANCH",
+                     "MONTMORILLONITE_WYO",
+                     "CORUNDUM",
+                     "QUARTZ"),
+            std = "QUARTZ",
+            std_conc = 20,
+            omit_std = TRUE,
+            align = 0.3)
+```
+
+
+```{r}
+fit2$phases
+```
+
+```{r}
+sum(fit2$phases$phase_percent, na.rm = TRUE)
+```
+
+
+### In cases where an internal standard is not added to a sample, phase quantification can be achieved by assuming that all detectable phases can be identified and that they sum to 100 weight %. By setting the std_conc argument of fps() to NA, or leaving it out of the function call, it will be assumed that the sample has been prepared without an internal standard and the phase concentrations computed accordingly.
+
+```{r}
+fit3 <- fps(lib = rockjock,
+            smpl = rockjock_mixtures$Mix1,
+            refs = c("ORDERED_MICROCLINE",
+                     "Plagioclase",
+                     "KAOLINITE_DRY_BRANCH",
+                     "MONTMORILLONITE_WYO",
+                     "ILLITE_1M_RM30",
+                     "CORUNDUM"),
+            std = "CORUNDUM",
+            align = 0.3)
+```
+
+```{r}
+fit3$phases
+```
+
+
+```{r}
+sum(fit3$phases$phase_percent) # this will be 100%
+```
+
+
+### Plotting results powdRfps and powdRafps objects, derived from fps() (and afps() see later), respectively, is achieved using plot() (see ?plot.powdRfps and ?plot.powdRafps).
+
+
+```{r}
+plot(fit1, wavelength = "Cu", interactive = FALSE)
+```
+
+
+
+### objects can be further adjusted by the group, mode and xlim arguments. When the group argument is set to TRUE, the patterns within the fit are grouped and summed according to phase names, which can help simplify the plot:
+
+### The mode argument can be one of "fit" (the default), "residuals" or "both", for example:
+
+
+```{r}
+plot(fit1, wavelength = "Cu",
+     mode = "both", xlim = c(20,30),
+     interactive = TRUE)
+```
+
+
+### Choosing which patterns to include to make a fit can be time consuming, as an alternative powdR also offers an apfs() function that will also select appropraite patterns from a (large) library and exclude others based on a limit of detection
+
+### Here the rockjock library, containing 169 reference patterns, will be used to quantify one of the samples in the rockjock_mixtures data. Note that when using afps(), omission of the refs argument in the function call will automatically result in all phases from the reference library being used in the fitting process.
+
+```{r}
+#Produce the fit
+a_fit1 <- afps(lib = rockjock,
+               smpl = rockjock_mixtures$Mix1,
+               std = "CORUNDUM",
+               align = 0.3,
+               lod = 1) #limit of detection weight % of the standard phase
+```
+
+
+### Once computed, the afps function produces a powdRafps object, which is a bundle of data in list format that contains the outputs (see ?afps.powdRlib). When large libraries such a rockjock are used to quantify a given sample, the resulting output is likely contain several different reference patterns for a given mineral, for example:
+
+```{r}
+table(a_fit1$phases$phase_name)
+```
+
+
+### The table illustrates that the resulting output contains 2 reference patterns for both illite and smectite, 3 patterns for plagioclase, and 1 pattern for each of the other phases selected by afps(). This information is grouped together and summed in the phases_grouped data frame within the powdRafps object:
+
+```{r}
+a_fit1$phases_grouped
+```
+
+### Note that the “background” phase in the output is simply a horizontal line that can account for shifts in background intensity, which can be useful to use in some cases. In the rockjock library, the background patterns have been given an exceptionally high RIR so that their quantified concentrations are near zero. These patterns are not in the original rockjock library
+
+
+# Mutiple sample quantification
+
+### The simplest way to quantify multiple samples via either fps() and afps() is by wrapping either of the functions in lapply() and supplying a list of diffractograms. The following example wraps the fps() function in lapply and applies the function to the first three items within the rockjock_mixtures data.
+
+
+```{r}
+multi_fit <- lapply(rockjock_mixtures[1:3], fps,
+                    lib = rockjock,
+                    std = "CORUNDUM",
+                    refs = c("ORDERED_MICROCLINE",
+                             "LABRADORITE",
+                             "KAOLINITE_DRY_BRANCH",
+                             "MONTMORILLONITE_WYO",
+                             "ILLITE_1M_RM30",
+                             "CORUNDUM",
+                             "QUARTZ"),
+                    align = 0.3)
+```
+
+
+### Whilst lapply is a simple way to quantify multiple samples, the computation remains restricted to a single core. Computation time can be reduced many-fold by allowing different cores of your machine to process one sample at a time, which can be achieved using the doParallel and foreach packages:
+
+```{r}
+
+#the below packages have been installed for you so just need loaded
+#load the packages
+library(foreach)
+library(doParallel)
+
+#Detect number of cores on machine
+UseCores <- detectCores()
+
+#Register the cluster using n - 1 cores 
+cl <- makeCluster(UseCores-1)
+
+registerDoParallel(cl)
+
+#Use foreach loop and %dopar% to compute in parallel
+multi_fit <- foreach(i = 1:3) %dopar%
+  (powdR::fps(lib = rockjock,
+               smpl = rockjock_mixtures[[i]],
+               std = "CORUNDUM",
+               refs = c("ORDERED_MICROCLINE",
+                        "LABRADORITE",
+                        "KAOLINITE_DRY_BRANCH",
+                        "MONTMORILLONITE_WYO",
+                        "ILLITE_1M_RM30",
+                        "CORUNDUM",
+                        "QUARTZ"),
+               align = 0.3))
+
+#name the items in the aquant_parallel list
+names(multi_fit) <- names(rockjock_mixtures)[1:3]
+
+#stop the cluster
+stopCluster(cl)
+```
+
+
+### When multiple samples are quantified it is often useful to report the phase concentrations of all of the samples in a single table. For a given list of powdRfps and/or powdRafps objects, the summarise_mineralogy() function yields such summary tables, for example:
+
+
+```{r}
+summarise_mineralogy(multi_fit, type = "grouped", order = TRUE)
+```
+
+### where type = "grouped" denotes that phases with the same phase_name will be summed together, and order = TRUE specifies that the columns will be ordered from most common to least common (assessed by the sum of each column). Using type = "all" instead would result in tabulation of all phase IDs.
+
+### In addition to the quantitative mineral data, three objective parameters that summarise the quality of the fit can be appended to the table via the logical rwp, r and delta arguments.
+
+```{r}
+summarise_mineralogy(multi_fit, type = "grouped", order = TRUE,
+                     rwp = TRUE, r = TRUE, delta = TRUE)
+```
+
+### the summarised results can easily be exported to csv
+
+```{r}
+
+# you may wish the check or set the default directory first to know where the file will be saved
+# one way is to go to the set working directory menu item under session tab
+min_summary <- summarise_mineralogy(multi_fit, type = "grouped", order = TRUE,
+                     rwp = TRUE, r = TRUE, delta = TRUE)
+
+write.csv(min_summary, "results-grouped.csv")  
+```
+
+
+
+
